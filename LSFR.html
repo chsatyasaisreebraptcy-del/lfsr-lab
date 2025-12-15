@@ -1,0 +1,533 @@
+
+
+
+
+<!-- LFSR EXPERIMENT -->
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Virtual LFSR Lab</title>
+  <style>
+    :root{
+  /* Light theme */
+  --bg:#f8fafc;
+  --card:#ffffff;
+  --accent:#213b8b;
+  --muted:#6b7280;
+  --glass:rgba(33,59,139,0.06);
+  --bit-on:#ffd700;
+  --bit-off:#eef2ff;
+  --text:#0f1724;
+}
+
+/* Dark theme */
+body.dark{
+  --bg:#0b1020;
+  --card:#11162a;
+  --accent:#7aa2ff;
+  --muted:#9aa4bf;
+  --glass:rgba(122,162,255,0.08);
+  --bit-on:#ffd166;
+  --bit-off:#1e2444;
+  --text:#e5e9f0;
+}
+
+    body{font-family:Inter,ui-sans-serif,system-ui,Segoe UI,Roboto,Helvetica,Arial; margin:0; background:var(--bg); color:var(--text)}
+    .wrap{max-width:1100px;margin:28px auto;padding:24px}
+
+    header{display:flex;gap:16px;align-items:center}
+
+    h1{margin:0;font-size:22px}
+    p.lead{color:var(--muted);margin-top:6px}
+    .grid{display:grid;grid-template-columns:380px 1fr;gap:18px;margin-top:18px}
+    .card{background:var(--card);border-radius:12px;padding:14px;box-shadow:0 6px 20px rgba(16,24,40,0.06);border:1px solid rgba(15,23,36,0.04)}
+    label{display:block;font-size:13px;color:var(--muted);margin-bottom:6px}
+    .controls{display:flex;flex-direction:column;gap:10px}
+    .row{display:flex;gap:8px;align-items:center}
+    input[type=number],input[type=text],select{width:100%;padding:8px;border-radius:8px;border:1px solid rgba(15,23,42,0.06);background:var(--glass);color:var(--text)}
+    button{background:var(--accent);border:none;padding:8px 12px;border-radius:8px;color:#fff;cursor:pointer;box-shadow:0 2px 6px rgba(33,59,139,0.18)}
+    .small{font-size:13px}
+    .register{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+    .bit{min-width:36px;height:36px;border-radius:8px;background:var(--bit-off);display:flex;align-items:center;justify-content:center;font-weight:600;color:var(--text);border:1px solid rgba(15,23,42,0.04)}
+    .bit.on{background:var(--bit-on);color:#08203a;border-color:rgba(33,59,139,0.08)}
+    .taps{display:flex;gap:6px;flex-wrap:wrap}
+    pre{background:#f1f5f9;padding:12px;border-radius:8px;overflow:auto;border:1px solid rgba(15,23,42,0.04)}
+    .output{height:140px;overflow:auto;background:#ffffff;padding:10px;border-radius:6px;border:1px solid rgba(15,23,42,0.04)}
+    .toolbar{display:flex;gap:8px;flex-wrap:wrap}
+    .section-title{font-size:14px;margin-bottom:8px;color:var(--text)}
+    .footer{margin-top:18px;color:var(--muted);font-size:13px}
+    canvas{background:#ffffff;border-radius:6px;border:1px solid rgba(15,23,42,0.04)}
+    .controls-inline{display:flex;gap:8px}
+/* Dark mode text fix */
+body.dark #log,
+body.dark #seqDisplay {
+  color: #000000;        /* black text */
+  background: #ffffff;  /* white background */
+}
+
+
+  </style>
+</head>
+<body>
+
+
+  <div class="wrap">
+    <header>
+  <div>
+    <h1>Virtual LFSR Lab </h1>
+    <p class="lead">Experiment visually with Linear Feedback Shift Registers (LFSR).</p>
+  </div>
+
+  <!-- Dark mode button -->
+  <div style="margin-left:auto">
+    <button id="themeToggle"
+            class="small"
+            style="background:var(--card);
+                   color:var(--text);
+                   border:1px solid rgba(15,23,42,0.1);">
+      🌙 Dark Mode
+    </button>
+  </div>
+</header>
+
+
+    <div class="grid">
+      <div class="card">
+        <div class="section-title">LFSR Configuration</div>
+        <div class="controls">
+          <div>
+            <label>Register width (bits)</label>
+            <select id="width">
+              <option>4</option>
+              <option selected>5</option>
+              <option>6</option>
+              <option>7</option>
+              <option>8</option>
+              <option>10</option>
+            </select>
+          </div>
+
+          <div>
+            <label>Tap positions (click to toggle)</label>
+            <div id="taps" class="taps"></div>
+          </div>
+
+          <div>
+            <label>Initial seed (binary, left-most is new feedback)</label>
+            <input id="seed" type="text" value="10011" placeholder="e.g. 10011" />
+          </div>
+
+          <div class="row">
+            <div class="controls-inline">
+              <button id="resetBtn">Load</button>
+              <button id="randomBtn">Randomize</button>
+            </div>
+            <div style="margin-left:auto;color:var(--muted);font-size:13px">All-zero seed disabled</div>
+          </div>
+
+          <hr style="border:none;height:1px;background:rgba(15,23,42,0.04);margin:8px 0" />
+
+          <div class="section-title">Simulation</div>
+          <div class="row">
+            <button id="stepBtn">Step</button>
+            <button id="runBtn">Run</button>
+            <button id="stopBtn">Stop</button>
+            <label style="margin-left:8px">Speed</label>
+            <input id="speed" type="range" min="50" max="1200" value="300" />
+          </div>
+
+          <div class="row" style="margin-top:8px">
+            <button id="exportBtn">Export CSV</button>
+            <button id="clearBtn">Clear Output</button>
+          </div>
+
+        </div>
+
+        <div style="margin-top:12px">
+          <div class="section-title">Notes</div>
+          <ul style="color:var(--muted);padding-left:18px">
+            <li>Feedback bit is XOR of selected taps.</li>
+            <li>Output bit shown is the right-most register bit before shift.</li>
+            <li>All-zero seed is prevented automatically.</li>
+          </ul>
+
+<hr style="border:none;height:1px;background:rgba(15,23,42,0.04);margin:10px 0" />
+
+<div class="section-title">Sequence Length Monitor</div>
+<div style="margin-top:10px">
+  <div class="section-title">Generated Sequence</div>
+
+  <div class="small" style="color:var(--muted);margin-bottom:4px">
+    Output bits (theoretical 2ⁿ − 1 sequence):
+  </div>
+
+  <div id="seqDisplay"
+       style="background:#f1f5f9;
+              padding:8px;
+              border-radius:6px;
+              font-family:monospace;
+              font-size:13px;
+              max-height:80px;
+              overflow:auto;
+              word-break:break-all;">
+    —
+  </div>
+<div style="margin-top:10px">
+  <div class="section-title">Sequence Quality</div>
+
+  <div id="qualityBadge"
+       style="padding:6px 10px;
+              border-radius:6px;
+              font-weight:600;
+              font-size:13px;
+              background:#f1f5f9;
+              color:#334155;">
+    Not evaluated
+  </div>
+</div>
+
+
+</div>
+
+
+<div class="small" style="color:var(--muted)">
+  Theoretical Max Length (2ⁿ − 1):
+</div>
+
+<div style="font-size:18px;font-weight:600;margin:4px 0" id="maxLen">
+  --
+</div>
+
+<div class="small" style="color:var(--muted)">
+  Generated Bits:
+</div>
+
+<div style="font-size:18px;font-weight:600;margin:4px 0" id="genLen">
+  0
+</div>
+
+<div class="small" style="color:var(--muted)" id="cycleStatus">
+  Sequence not completed
+</div>
+
+
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="section-title">Live Visualization</div>
+
+        <div style="display:flex;gap:12px;align-items:flex-start">
+          <div style="flex:1">
+            <div style="margin-bottom:8px"><label>Register state</label></div>
+            <div id="register" class="register"></div>
+
+            <div style="margin-top:12px">
+              <label>State table (clock, state, out)</label>
+              <div class="output" id="log"></div>
+            </div>
+          </div>
+
+          <div style="width:320px">
+            <div style="margin-bottom:8px"><label>Waveform (output bits)</label></div>
+            <canvas id="wave" width="320" height="120"></canvas>
+            <div style="margin-top:10px">
+              <label>Autocorrelation (quick)</label>
+              <canvas id="acor" width="320" height="80"></canvas>
+            </div>
+          </div>
+        </div>
+
+        
+
+    <div class="card" style="margin-top:18px">
+      <h3 style="margin:0">Guided Experiments (Quick links)</h3>
+      <p class="small" style="color:var(--muted)">Open these scenarios by loading the seed and taps, then run/step as instructed.</p>
+      <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
+        <button onclick="loadScenario('exp1')">Experiment 1 (4-bit m-seq)</button>
+        <button onclick="loadScenario('exp2')">Experiment 2 (5-bit find taps)</button>
+        <button onclick="loadScenario('exp3')">Experiment 3 (autocorr)</button>
+        <button onclick="loadScenario('exp4')">Demo Experiment</button>
+      </div>
+    </div>
+
+   
+
+<script>
+// --- LFSR engine and UI glue ---
+let widthEl = document.getElementById('width');
+let tapsEl = document.getElementById('taps');
+let seedEl = document.getElementById('seed');
+let registerDiv = document.getElementById('register');
+let logDiv = document.getElementById('log');
+
+let waveCanvas = document.getElementById('wave');
+let acorCanvas = document.getElementById('acor');
+let ctxWave = waveCanvas.getContext('2d');
+let ctxAcor = acorCanvas.getContext('2d');
+
+let state = [];
+let taps = [];
+let running = false;
+let timer = null;
+let outputs = [];
+let maxSequenceLength = 0;
+let initialState = '';
+
+
+function buildTaps(n){
+  tapsEl.innerHTML='';
+  taps = [];
+  for(let i=1;i<=n;i++){
+    let b = document.createElement('button');
+    b.className='bit';
+    b.textContent = i;
+    b.title = 'Tap at bit index '+i;
+    b.onclick = ()=>{ b.classList.toggle('on'); toggleTap(i-1); };
+    tapsEl.appendChild(b);
+  }
+}
+
+function toggleTap(i){
+  if(taps.includes(i)) taps = taps.filter(x=>x!==i); else taps.push(i);
+  updateSnippet();
+}
+
+function renderRegister(){
+  registerDiv.innerHTML='';
+  state.forEach((v,idx)=>{
+    let d = document.createElement('div'); d.className='bit'+(v? ' on':''); d.textContent=v; registerDiv.appendChild(d);
+  });
+}
+
+function loadSeed(){
+  let w = parseInt(widthEl.value);
+  let s = seedEl.value.trim().replace(/[^01]/g,'');
+  if(s.length===0) s = '1'+('0'.repeat(w-1));
+  if(s.length !== w){
+    if(s.length < w) s = s.padEnd(w,'0'); else s = s.slice(0,w);
+  }
+  if(!/1/.test(s)){ s = '1'+('0'.repeat(w-1)); seedEl.value = s; }
+  state = s.split('').map(ch=>parseInt(ch,10));
+  renderRegister();
+  logDiv.innerHTML=''; outputs=[]; drawWave(); drawAcor();
+
+  // store initial register state for cycle detection
+  initialState = state.join('');
+
+  // calculate theoretical max length = 2^n - 1
+  let n = state.length;
+  maxSequenceLength = Math.pow(2, n) - 1;
+
+  // update UI
+  document.getElementById('maxLen').textContent = maxSequenceLength;
+  document.getElementById('genLen').textContent = 0;
+  document.getElementById('cycleStatus').textContent = 'Sequence not completed';
+   document.getElementById('seqDisplay').textContent = '—';
+  document.getElementById('qualityBadge').textContent = 'Not evaluated';
+  document.getElementById('qualityBadge').style.background = '#f1f5f9';
+  document.getElementById('qualityBadge').style.color = '#334155';
+
+
+}
+
+function stepOnce(){
+  let fb = 0;
+  taps.forEach(t=>{ fb ^= state[t]; });
+  let out = state[state.length-1];
+  state.pop(); state.unshift(fb);
+  outputs.push(out);
+  logDiv.innerHTML += `<div class=small> ${outputs.length} &nbsp; ${state.join('')} &nbsp; out:${out}</div>`;
+  renderRegister(); drawWave(); drawAcor();
+  // update generated bit counter
+  document.getElementById('genLen').textContent = outputs.length;
+
+  // detect full cycle (register returns to initial state)
+  if (state.join('') === initialState && outputs.length > 1) {
+    document.getElementById('cycleStatus').textContent =
+      'Sequence completed (cycle detected)';
+
+  // auto-stop and evaluate sequence quality
+  if (outputs.length === maxSequenceLength) {
+    stopLoop();
+
+    document.getElementById('qualityBadge').textContent =
+      'Maximal-length sequence (m-sequence)';
+    document.getElementById('qualityBadge').style.background = '#dcfce7';
+    document.getElementById('qualityBadge').style.color = '#166534';
+  }
+
+  // early repetition → non-maximal taps
+  if (state.join('') === initialState && outputs.length < maxSequenceLength) {
+    stopLoop();
+
+    document.getElementById('qualityBadge').textContent =
+      'Non-maximal sequence (wrong taps)';
+    document.getElementById('qualityBadge').style.background = '#fee2e2';
+    document.getElementById('qualityBadge').style.color = '#991b1b';
+  }
+
+  }
+
+  // detect maximum-length sequence
+  if (outputs.length === maxSequenceLength) {
+    document.getElementById('cycleStatus').textContent =
+      'Max length (2ⁿ − 1) reached';
+  // show generated sequence (up to 2^n - 1 bits)
+  let shownSeq = outputs.slice(0, maxSequenceLength).join('');
+  document.getElementById('seqDisplay').textContent = shownSeq || '—';
+
+  }
+
+}
+
+function runLoop(){
+  if(running) return;
+  running = true;
+  let speed = parseInt(document.getElementById('speed').value);
+  timer = setInterval(()=>{ stepOnce(); }, speed);
+}
+function stopLoop(){ running=false; clearInterval(timer); }
+
+function exportCSV(){
+  let csv = 'index,bit\n';
+  outputs.forEach((b,i)=>{ csv += (i+1)+','+b+'\n'; });
+  let blob = new Blob([csv],{type:'text/csv'});
+  let url = URL.createObjectURL(blob);
+  let a = document.createElement('a'); a.href=url; a.download='lfsr_sequence.csv'; a.click();
+}
+
+function drawWave(){
+  // draw angular "step" waveform (staircase) for outputs
+  ctxWave.clearRect(0,0,waveCanvas.width,waveCanvas.height);
+  // background
+  ctxWave.fillStyle = '#ffffff'; ctxWave.fillRect(0,0,waveCanvas.width,waveCanvas.height);
+  // grid lines lightly
+  ctxWave.strokeStyle = 'rgba(15,23,42,0.04)'; ctxWave.lineWidth = 1;
+  for(let y=0;y<waveCanvas.height;y+=20){ ctxWave.beginPath(); ctxWave.moveTo(0,y); ctxWave.lineTo(waveCanvas.width,y); ctxWave.stroke(); }
+
+  let series = outputs.slice(-64); // show last 64 points
+  if(series.length===0) return;
+
+  // map bit to y: high -> upper area, low -> lower area
+  const HIGH_Y = 20; const LOW_Y = waveCanvas.height - 20;
+  const maxPoints = 64;
+  const xGap = (waveCanvas.width - 12) / maxPoints;
+
+  ctxWave.strokeStyle = "#213b8b"; // royal blue stroke
+  ctxWave.lineWidth = 2;
+  ctxWave.beginPath();
+
+  // start at first sample horizontal position
+  for(let i=0;i<series.length;i++){
+    const xStart = 6 + i * xGap;
+    const xEnd = 6 + (i+1) * xGap;
+    const y = series[i] ? HIGH_Y : LOW_Y;
+    if(i===0){ ctxWave.moveTo(xStart, y); }
+    // draw horizontal segment for this sample
+    ctxWave.lineTo(xEnd, y);
+    // if next sample exists and is different, draw a vertical jump at xEnd
+    const next = series[i+1];
+    if(typeof next !== 'undefined' && next !== series[i]){
+      const yNext = next ? HIGH_Y : LOW_Y;
+      ctxWave.lineTo(xEnd, yNext); // vertical jump (angular corner)
+    }
+  }
+  ctxWave.stroke();
+
+  // optionally draw small markers
+  ctxWave.fillStyle = '#213b8b';
+  for(let i=0;i<series.length;i++){
+    const x = 6 + (i+0.5) * xGap;
+    const y = series[i] ? HIGH_Y : LOW_Y;
+    ctxWave.fillRect(x-1, y-1, 2, 2);
+  }
+}
+
+function drawAcor(){
+  let seq = outputs.slice(-256);
+  if(seq.length===0){ ctxAcor.clearRect(0,0,acorCanvas.width,acorCanvas.height); return; }
+  let n = seq.length; let mean = seq.reduce((a,b)=>a+b,0)/n;
+  let ac = [];
+  for(let lag=0;lag<Math.min(32,n);lag++){
+    let s=0; for(let i=0;i<n-lag;i++) s += (seq[i]-mean)*(seq[i+lag]-mean);
+    ac.push(s);
+  }
+  let maxv = Math.max(...ac.map(Math.abs)); if(maxv===0) maxv=1;
+  ctxAcor.clearRect(0,0,acorCanvas.width,acorCanvas.height);
+  ctxAcor.fillStyle='#ffffff'; ctxAcor.fillRect(0,0,acorCanvas.width,acorCanvas.height);
+  ctxAcor.strokeStyle='#213b8b'; ctxAcor.beginPath();
+  for(let i=0;i<ac.length;i++){
+    let x = 6 + i*((acorCanvas.width-12)/ac.length);
+    let y = (acorCanvas.height/2) - (ac[i]/maxv)*(acorCanvas.height/2)*0.9;
+    if(i===0) ctxAcor.moveTo(x,y); else ctxAcor.lineTo(x,y);
+  }
+  ctxAcor.stroke();
+}
+
+function updateSnippet(){
+  // snippet display removed (no-op)
+}
+// UI wiring
+widthEl.onchange = ()=>{ buildTaps(parseInt(widthEl.value)); loadSeed(); };
+document.getElementById('resetBtn').onclick = ()=>{ loadSeed(); }
+document.getElementById('randomBtn').onclick = ()=>{
+  let w = parseInt(widthEl.value); let s=''; for(let i=0;i<w;i++) s += (Math.random()>0.5)?'1':'0'; if(!/1/.test(s)) s = '1'+('0'.repeat(w-1)); seedEl.value = s; loadSeed(); }
+document.getElementById('stepBtn').onclick = stepOnce;
+document.getElementById('runBtn').onclick = runLoop;
+document.getElementById('stopBtn').onclick = stopLoop;
+document.getElementById('exportBtn').onclick = exportCSV;
+document.getElementById('clearBtn').onclick = ()=>{
+  logDiv.innerHTML='';
+  outputs=[];
+  drawWave();
+  drawAcor();
+  document.getElementById('genLen').textContent = 0;
+  document.getElementById('cycleStatus').textContent = 'Sequence not completed';
+  document.getElementById('seqDisplay').textContent = '—';
+    document.getElementById('qualityBadge').textContent = 'Not evaluated';
+
+}
+
+
+// build initial
+buildTaps(parseInt(widthEl.value)); updateSnippet(); loadSeed();
+
+const themeBtn = document.getElementById('themeToggle');
+
+themeBtn.onclick = () => {
+  document.body.classList.toggle('dark');
+
+  if (document.body.classList.contains('dark')) {
+    themeBtn.textContent = '☀ Light Mode';
+  } else {
+    themeBtn.textContent = '🌙 Dark Mode';
+  }
+};
+
+
+// quick scenario loader
+function loadScenario(name){
+  if(name==='exp1'){
+    widthEl.value='4'; buildTaps(4); seedEl.value='1001';
+    Array.from(tapsEl.children).forEach((b,i)=>{ b.classList.toggle('on', (i===0||i===3)); if(i===0||i===3){ if(!taps.includes(i)) taps.push(i); } else { taps = taps.filter(x=>x!==i); } });
+  }
+  else if(name==='exp2'){
+    widthEl.value='5'; buildTaps(5); seedEl.value='10011'; taps=[];
+    Array.from(tapsEl.children).forEach(b=>b.classList.remove('on'));
+  }
+  else if(name==='exp3'){
+    widthEl.value='10'; buildTaps(10); seedEl.value='1000000001'; taps=[9,6];
+    Array.from(tapsEl.children).forEach((b,i)=>{ b.classList.toggle('on', taps.includes(i)); });
+  }
+  else if(name==='exp4'){
+    widthEl.value='7'; buildTaps(7); seedEl.value='1000001'; taps=[6,5]; Array.from(tapsEl.children).forEach((b,i)=>{ b.classList.toggle('on', taps.includes(i)); });
+  }
+  loadSeed(); updateSnippet();
+}
+
+</script>
+</body>
+</html>
